@@ -1,20 +1,79 @@
+import hmac
+import hashlib
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich import box
 from datetime import datetime
-from config import LOG_PATH, ALERT_LEVELS
+from config import LOG_PATH, ALERT_LEVELS, HMAC_SECRET_KEY
 
 console = Console()
 
 
+def generate_hmac(message):
+    """Generate HMAC signature for a log entry."""
+    return hmac.new(
+        HMAC_SECRET_KEY.encode(),
+        message.encode(),
+        hashlib.sha256
+    ).hexdigest()
+
+
+def verify_log():
+    """Verify all log entries have valid HMAC signatures."""
+    console.print("\n[bold cyan]═══ Verifying Log Integrity ═══[/bold cyan]\n")
+
+    try:
+        with open(LOG_PATH, "r") as f:
+            content = f.read()
+
+        entries = content.strip().split("-" * 60)
+        entries = [e.strip() for e in entries if e.strip()]
+
+        all_valid = True
+        for i, entry in enumerate(entries):
+            lines = entry.strip().split("\n")
+            hmac_line = [l for l in lines if l.startswith("HMAC:")]
+
+            if not hmac_line:
+                console.print(f"[red]⚠ Entry {i+1}: NO HMAC FOUND — possible tampering[/red]")
+                all_valid = False
+                continue
+
+            stored_hmac = hmac_line[0].replace("HMAC: ", "").strip()
+            message = "\n".join([l for l in lines if not l.startswith("HMAC:")])
+            expected_hmac = generate_hmac(message)
+
+            if hmac.compare_digest(stored_hmac, expected_hmac):
+                console.print(f"[green]✓ Entry {i+1}: VALID[/green]")
+            else:
+                console.print(f"[red]✗ Entry {i+1}: INVALID — log has been tampered with[/red]")
+                all_valid = False
+
+        if all_valid:
+            console.print("\n[bold green]✓ All log entries verified. Log is intact.[/bold green]")
+        else:
+            console.print("\n[bold red]⚠ Log integrity compromised. Investigate immediately.[/bold red]")
+
+    except FileNotFoundError:
+        console.print("[yellow]No log file found yet.[/yellow]")
+
+
 def write_to_log(event_type, filepath, old_hash, new_hash, alert_level):
-    """Write alert to log file."""
+    """Write alert to log file with HMAC signature."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    message = (
+        f"[{timestamp}] [{alert_level}] {event_type.upper()}: {filepath}\n"
+        f"  Old Hash: {old_hash}\n"
+        f"  New Hash: {new_hash}"
+    )
+
+    signature = generate_hmac(message)
+
     with open(LOG_PATH, "a") as f:
-        f.write(f"[{timestamp}] [{alert_level}] {event_type.upper()}: {filepath}\n")
-        f.write(f"  Old Hash: {old_hash}\n")
-        f.write(f"  New Hash: {new_hash}\n")
+        f.write(message + "\n")
+        f.write(f"HMAC: {signature}\n")
         f.write(f"{'-' * 60}\n")
 
 
@@ -22,10 +81,8 @@ def print_alert(event_type, filepath, old_hash, new_hash, alert_level):
     """Print a rich formatted alert to the terminal."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Pick color based on alert level
     color = "yellow" if alert_level == "WARNING" else "red"
 
-    # Build the alert panel
     content = (
         f"[bold]Event    :[/bold] {event_type.upper()}\n"
         f"[bold]File     :[/bold] {filepath}\n"
@@ -41,7 +98,6 @@ def print_alert(event_type, filepath, old_hash, new_hash, alert_level):
         box=box.DOUBLE
     ))
 
-    # Also write to log file
     write_to_log(event_type, filepath, old_hash, new_hash, alert_level)
 
 
@@ -92,4 +148,4 @@ def print_summary_table():
 
 
 if __name__ == "__main__":
-    print_summary_table()
+    verify_log()

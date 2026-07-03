@@ -18,3 +18,6 @@ ALERT_LEVELS = {
                  "modified": "CRITICAL",
                  "deleted": "critical"
 }
+
+
+HMAC_SECRET_KEY = "ef285b1acfd0f0d70a3e2a9ea677ed4b093da2803594f720a470f80f9b3865df"
