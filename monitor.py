@@ -6,6 +6,7 @@ from watchdog.events import FileSystemEventHandler
 from config import WATCH_DIRECTORY, ALERT_LEVELS
 from database import get_baseline, log_event, save_baseline
 from baseline import hash_file, get_file_info
+from alerts import print_alert
 
 
 class FIMEventHandler(FileSystemEventHandler):
@@ -32,12 +33,8 @@ class FIMEventHandler(FileSystemEventHandler):
 
         if new_hash != old_hash:
             alert_level = ALERT_LEVELS["modified"]
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            print(f"\n[{alert_level}] MODIFIED: {filepath}")
-            print(f"  Time      : {timestamp}")
-            print(f"  Old Hash  : {old_hash}")
-            print(f"  New Hash  : {new_hash}")
+            print_alert("modified", filepath, old_hash, new_hash, alert_level)
 
             log_event(
                 event_type="modified",
@@ -47,7 +44,6 @@ class FIMEventHandler(FileSystemEventHandler):
                 alert_level=alert_level
             )
 
-            # Update baseline with new hash
             save_baseline(
                 filepath=filepath,
                 hash=new_hash,
@@ -70,11 +66,8 @@ class FIMEventHandler(FileSystemEventHandler):
             return
 
         alert_level = ALERT_LEVELS["created"]
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        print(f"\n[{alert_level}] CREATED: {filepath}")
-        print(f"  Time      : {timestamp}")
-        print(f"  Hash      : {new_hash}")
+        print_alert("created", filepath, None, new_hash, alert_level)
 
         log_event(
             event_type="created",
@@ -103,11 +96,8 @@ class FIMEventHandler(FileSystemEventHandler):
         old_hash = old_entry["hash"] if old_entry else None
 
         alert_level = ALERT_LEVELS["deleted"]
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        print(f"\n[{alert_level}] DELETED: {filepath}")
-        print(f"  Time      : {timestamp}")
-        print(f"  Last Hash : {old_hash}")
+        print_alert("deleted", filepath, old_hash, None, alert_level)
 
         log_event(
             event_type="deleted",
