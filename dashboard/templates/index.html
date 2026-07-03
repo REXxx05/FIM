@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FIM Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0a0a0a;
+            color: #e0e0e0;
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+        }
+
+        header {
+            border-bottom: 1px solid #00ff41;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            color: #00ff41;
+            font-size: 24px;
+            letter-spacing: 4px;
+        }
+
+        header p {
+            color: #666;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: #111;
+            border: 1px solid #222;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 36px;
+            font-weight: bold;
+            color: #00ff41;
+        }
+
+        .stat-card.critical .number { color: #ff4444; }
+        .stat-card.warning .number  { color: #ffaa00; }
+
+        .stat-card .label {
+            font-size: 11px;
+            color: #666;
+            letter-spacing: 2px;
+            margin-top: 5px;
+        }
+
+        h2 {
+            color: #00ff41;
+            font-size: 13px;
+            letter-spacing: 3px;
+            margin-bottom: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        th {
+            background: #111;
+            color: #666;
+            padding: 10px 15px;
+            text-align: left;
+            letter-spacing: 2px;
+            font-size: 11px;
+            border-bottom: 1px solid #222;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #1a1a1a;
+            vertical-align: top;
+        }
+
+        tr:hover td { background: #111; }
+
+        .badge {
+            padding: 3px 8px;
+            font-size: 10px;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+
+        .badge.CRITICAL {
+            background: #3a0000;
+            color: #ff4444;
+            border: 1px solid #ff4444;
+        }
+
+        .badge.WARNING {
+            background: #2a1a00;
+            color: #ffaa00;
+            border: 1px solid #ffaa00;
+        }
+
+        .hash {
+            font-size: 10px;
+            color: #444;
+            word-break: break-all;
+        }
+
+        .hash span { color: #666; }
+
+        .filepath { color: #00aaff; }
+
+        .event-type { color: #e0e0e0; font-weight: bold; }
+
+        .no-events {
+            text-align: center;
+            padding: 40px;
+            color: #333;
+        }
+
+        .refresh {
+            float: right;
+            background: none;
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            padding: 5px 15px;
+            cursor: pointer;
+            font-family: monospace;
+            font-size: 12px;
+            letter-spacing: 2px;
+        }
+
+        .refresh:hover { background: #00ff41; color: #000; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>⬡ FILE INTEGRITY MONITOR</h1>
+    <p>Real-time filesystem surveillance — {{ stats.total_files }} files under watch</p>
+</header>
+
+<div class="stats">
+    <div class="stat-card">
+        <div class="number">{{ stats.total_files }}</div>
+        <div class="label">FILES MONITORED</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ stats.total_events }}</div>
+        <div class="label">TOTAL EVENTS</div>
+    </div>
+    <div class="stat-card critical">
+        <div class="number">{{ stats.critical }}</div>
+        <div class="label">CRITICAL</div>
+    </div>
+    <div class="stat-card warning">
+        <div class="number">{{ stats.warning }}</div>
+        <div class="label">WARNINGS</div>
+    </div>
+</div>
+
+<h2>
+    ▸ RECENT EVENTS
+    <button class="refresh" onclick="location.reload()">↺ REFRESH</button>
+</h2>
+
+{% if events %}
+<table>
+    <thead>
+        <tr>
+            <th>TIMESTAMP</th>
+            <th>LEVEL</th>
+            <th>EVENT</th>
+            <th>FILE</th>
+            <th>HASHES</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for event in events %}
+        <tr>
+            <td>{{ event.timestamp }}</td>
+            <td><span class="badge {{ event.alert_level }}">{{ event.alert_level }}</span></td>
+            <td class="event-type">{{ event.event_type | upper }}</td>
+            <td class="filepath">{{ event.filepath }}</td>
+            <td class="hash">
+                {% if event.old_hash %}
+                <span>OLD</span> {{ event.old_hash[:32] }}...<br>
+                {% endif %}
+                {% if event.new_hash %}
+                <span>NEW</span> {{ event.new_hash[:32] }}...
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="no-events">NO EVENTS LOGGED YET</div>
+{% endif %}
+
+<script>
+    // Auto refresh every 10 seconds
+    setTimeout(() => location.reload(), 10000);
+</script>
+
+</body>
+</html>
